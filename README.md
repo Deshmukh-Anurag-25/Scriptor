@@ -1,4 +1,4 @@
-# writecode
+# scriptor
 
 A distraction-free, notebook-style rich text editor — originally a
 single HTML file, now a React + Vite project. Everything runs
@@ -6,7 +6,7 @@ client-side; there is no backend or account system. All data lives in
 the browser’s `localStorage`.
 
 **Live Demo:**
-[writecode](https://deshmukh-anurag-25.github.io/Scriptor/)
+[scriptor](https://deshmukh-anurag-25.github.io/Scriptor/)
 
 ## Feature overview
 
@@ -97,7 +97,7 @@ the browser’s `localStorage`.
 ## Project structure
 
 ``` text
-writecode-react/
+scriptor-react/
 ├── index.html               Vite HTML entry (fonts, #root mount point)
 ├── package.json
 ├── vite.config.js
@@ -155,7 +155,7 @@ npm run build    # production build to dist/
 Everything lives in the browser’s `localStorage` — there is no server,
 no accounts, and no cross-device sync.
 
-- **`writecode.pages.v1`** — a single JSON array holding every page:
+- **`scriptor.pages.v1`** — a single JSON array holding every page:
 
   ``` js
   { id, title, content, notes, tags, pinned, trashed, updated }
@@ -164,7 +164,7 @@ no accounts, and no cross-device sync.
   Every edit re-serializes the whole array to this one key, debounced
   400ms after you stop typing (`scheduleSave` in `usePages.js`).
 
-- **`writecode.theme`**, **`writecode.font`**, **`writecode.lh`** —
+- **`scriptor.theme`**, **`scriptor.font`**, **`scriptor.lh`** —
   display preferences (theme, content font, line height), independent of
   any page.
 
@@ -182,7 +182,7 @@ This is computed once, synchronously, in `usePages`’ initial state
 (`pickLastActiveId`). If you want it to instead persist the literal last
 *viewed* page id (even if you didn’t edit it), that’s a small,
 deliberate change — ask and I can add it as an explicit
-`writecode.lastActiveId` key.
+`scriptor.lastActiveId` key.
 
 All `localStorage` reads/writes are wrapped in try/catch, so private
 browsing or a full storage quota fail quietly rather than crashing the
