@@ -1,164 +1,186 @@
-# writecode (React port)
+# writecode
 
-A React + Vite port of the single-file `writecode` HTML app. Same look, same
-`contentEditable` + `document.execCommand` editing approach, same
-`localStorage`-based persistence — just split into components/hooks.
+A distraction-free, notebook-style rich text editor — originally a single
+HTML file, now a React + Vite project. Everything runs client-side; there is
+no backend or account system. All data lives in the browser's `localStorage`.
 
-## Run it
+## Feature overview
+
+### Core editor
+- Rich text editing via `contentEditable` + `document.execCommand`: bold,
+  italic, underline, strikethrough, super/subscript, text color & highlight,
+  alignment, ordered/unordered lists, indent/outdent, links, images, tables,
+  horizontal rules, page breaks, clear formatting, undo/redo.
+- Paragraph styles (Normal / H1 / H2 / H3 / Quote), font family picker (14
+  serif/sans/mono fonts), font size, and line-height control.
+- 6 color themes (Light, Sepia, Slate, Forest, Nord, Dark), persisted
+  independently of any page.
+- Focus mode (hides all chrome except the page) and a find & replace bar.
+- Live word count, character count, estimated reading time, and an
+  auto-generated outline (from H1/H2/H3) with click-to-scroll.
+- Autosave, debounced 400ms after you stop typing, with a "Saving…/Saved"
+  status chip.
+
+### Editing quality
+- **Markdown shortcuts** — type `# `, `## `, `### `, `> `, `- `/`* `, or
+  `1. ` at the start of a line to auto-convert it to a heading, quote, or
+  list. Type `**bold**`, `*italic*` / `_italic_`, or `` `code` `` inline in a
+  plain paragraph to convert it on the fly.
+- **Slash-command menu** — type `/` on an empty line for a quick-insert menu
+  (Heading, Quote, Bullet/Numbered list, Table, Image, Divider).
+- **Image compression** — inserted images are downscaled and re-encoded on a
+  canvas before being embedded, instead of storing the original file
+  byte-for-byte, to keep the `localStorage` footprint smaller.
+
+### Organization
+- **Tags** — add/remove tags per page from the sidebar; filter the "All
+  pages" list by one or more tags via chip toggles; tags also show inline
+  next to each page's title.
+- **Indexed full-text search** — an in-memory inverted index (token → page
+  ids) built from title + content + tags, ranked by matching-token count
+  with prefix matching (so "meet" matches "meeting"), rebuilt whenever pages
+  change.
+- **Page templates** — "New page" is a split button: click for a blank page,
+  or open the caret for Meeting Notes / Blog Draft / To-do List starting
+  points.
+- Pin pages to the top of the list, trash/restore, and search across all
+  non-trashed pages.
+
+### Export / Import
+- **Export**: plain text (`.txt`), Markdown (`.md`), a standalone web page
+  (`.html`), Word (`.doc`), and a real generated PDF (`.pdf`) — not just the
+  browser's print dialog.
+- **Import**: drop in a `.md`, `.html`, `.txt`, or `.docx` file and it
+  becomes a new page (Markdown parsed via `marked`, Word via `mammoth`,
+  plain text paragraph-wrapped, HTML used as-is).
+
+### Polish
+- **Command palette** (`Ctrl+/` or the ⌘ icon) — fuzzy-searchable list of
+  every action: new page/template, theme switch, formatting commands,
+  exports, toggles.
+- **Mobile-responsive layout** — below ~780px wide the sidebar becomes a
+  slide-over panel with a tap-to-close backdrop instead of squeezing the
+  editor; the breadcrumb and save-status chip hide on very narrow screens.
+- Full keyboard shortcut support (see table below).
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd + B` | Bold |
+| `Ctrl/Cmd + I` | Italic |
+| `Ctrl/Cmd + U` | Underline |
+| `Ctrl/Cmd + Z` / `Y` | Undo / Redo |
+| `Ctrl/Cmd + F` | Find & replace |
+| `Ctrl/Cmd + K` | Insert link |
+| `Ctrl/Cmd + /` | Command palette |
+| `F11` | Toggle focus mode |
+| `Esc` | Close find bar / palette, exit focus mode |
+| `/` (start of line) | Open slash-command menu |
+| `# `, `## `, `### ` | Heading 1 / 2 / 3 |
+| `> ` | Quote |
+| `- `, `* `, `1. ` | Bullet / numbered list |
+| `**text**`, `*text*`/`_text_`, `` `text` `` | Bold / italic / inline code |
+
+## Project structure
+
+```
+writecode-react/
+├── index.html               Vite HTML entry (fonts, #root mount point)
+├── package.json
+├── vite.config.js
+├── README.md
+└── src/
+    ├── main.jsx              React root render
+    ├── App.jsx                Top-level state, exec() command dispatcher,
+    │                          keyboard shortcuts, import/export handlers,
+    │                          command palette wiring
+    ├── styles.css              All CSS (themes, layout, components, mobile
+    │                          media queries) — ported from the original file
+    ├── constants.js             localStorage keys, font map, color palettes,
+    │                           theme list, page templates
+    ├── utils.js                 stripHtml / escapeHtml / downloadBlob
+    ├── hooks/
+    │   └── usePages.js          All page state: load/save to localStorage,
+    │                           create (blank/template/import), autosave,
+    │                           pin/trash/restore, "last active page" logic
+    ├── utils/
+    │   ├── editorHelpers.js     Markdown auto-format + current-block lookup
+    │   ├── searchIndex.js       Inverted-index full-text search
+    │   ├── imageResize.js       Canvas-based image downscale/compress
+    │   ├── markdown.js          HTML ⇄ Markdown (marked / turndown)
+    │   ├── docx.js               .docx → HTML (mammoth)
+    │   └── pdf.js                HTML → PDF (jsPDF + html2canvas)
+    └── components/
+        ├── TopBar.jsx            Logo, sidebar/focus/find toggles, command
+        │                        palette trigger, theme popover, Import
+        │                        button, Export select, New Page menu
+        ├── NewPageMenu.jsx        Split "New page" button + template popover
+        ├── ImportButton.jsx       File picker + per-format parsing
+        ├── BlockToolbar.jsx       Formatting buttons, style/font/size/
+        │                        line-height selects, color popovers
+        ├── FindBar.jsx            Find & replace
+        ├── SlashMenu.jsx          Floating quick-insert menu
+        ├── CommandPalette.jsx     Fuzzy-filterable action list (Ctrl+/)
+        ├── Sidebar.jsx            Page tab (Details/Tags/Outline/Notes) +
+        │                        All Pages tab (search, tag filter, pin,
+        │                        trash, restore)
+        ├── TagEditor.jsx          Tag chip input for the current page
+        └── Editor.jsx             The title + content contentEditable divs,
+                                   markdown auto-format & slash-menu wiring
+```
+
+## Setup
 
 ```bash
 npm install
-npm run dev
+npm run dev      # local dev server
+npm run build    # production build to dist/
 ```
 
-## Project layout
+## Data & storage model
 
-```
-src/
-  constants.js       LS keys, font map, color palettes, theme list
-  utils.js           stripHtml / escapeHtml / downloadBlob
-  hooks/usePages.js  all page state + localStorage read/write (see below)
-  components/
-    TopBar.jsx        logo, sidebar/focus/find toggles, theme popover, export, "New page"
-    BlockToolbar.jsx   formatting buttons, style/font/size/line-height selects, color pickers
-    FindBar.jsx        find & replace
-    Sidebar.jsx        Details/Outline/Notes tab + All pages tab (search, pin, trash, restore)
-    Editor.jsx         the two contentEditable divs (title + content)
-  App.jsx            wires it all together, holds exec()/keyboard shortcuts/theme prefs
-```
+Everything lives in the browser's `localStorage` — there is no server, no
+accounts, and no cross-device sync.
 
-## How storage works (and how "last session" is restored)
+- **`writecode.pages.v1`** — a single JSON array holding every page:
+  ```js
+  { id, title, content, notes, tags, pinned, trashed, updated }
+  ```
+  Every edit re-serializes the whole array to this one key, debounced 400ms
+  after you stop typing (`scheduleSave` in `usePages.js`).
+- **`writecode.theme`**, **`writecode.font`**, **`writecode.lh`** — display
+  preferences (theme, content font, line height), independent of any page.
 
-Nothing changed about the storage model — I kept it exactly as it was, just
-moved into `usePages.js`.
-
-**One localStorage key holds everything:** `writecode.pages.v1`. It's a JSON
-array of page objects:
-
-```js
-{ id, title, content, notes, pinned, trashed, updated }
-```
-
-Every edit (title, body, or notes) is written back to this array and the
-whole array is re-serialized to that key, debounced 400ms after you stop
-typing (`scheduleSave` in `usePages.js` — identical timing to the original's
-`scheduleSave()`).
-
-**There is no dedicated "last open page" record.** The app never stores
-"page X was the one open when you closed the tab." Instead, on every load it
-*recomputes* which page to open with this rule (`pickLastActiveId`):
+**"Last session" isn't stored as an explicit pointer.** There's no "page X
+was open when you closed the tab" record. Instead, on every load the app
+picks whichever non-trashed page has the most recent `updated` timestamp —
+i.e., the page you *edited* most recently, not necessarily whichever page
+happened to be on screen:
 
 ```js
 pages.filter(p => !p.trashed).sort((a, b) => b.updated - a.updated)[0]?.id
 ```
 
-In plain terms: **"last session" = whichever non-trashed page has the most
-recent `updated` timestamp** — i.e. the page you *edited* most recently, not
-necessarily the page that happened to be open on screen when you left. If you
-opened Page B to read it but only typed in Page A, reloading will bring you
-back to Page A, because that's the one with the newer `updated` value.
+This is computed once, synchronously, in `usePages`' initial state
+(`pickLastActiveId`). If you want it to instead persist the literal last
+*viewed* page id (even if you didn't edit it), that's a small, deliberate
+change — ask and I can add it as an explicit `writecode.lastActiveId` key.
 
-This happens once, synchronously, in `usePages`' initial state:
+All `localStorage` reads/writes are wrapped in try/catch, so private
+browsing or a full storage quota fail quietly rather than crashing the app.
 
-```js
-const [activeId, setActiveId] = useState(() => pickLastActiveId(loadPagesFromStorage()));
-```
+## Known limitations / possible next steps
 
-Three other, unrelated preferences persist the same way but under separate
-keys, and are restored in `App.jsx` on mount:
-- `writecode.theme` — color theme
-- `writecode.font` — content font family
-- `writecode.lh` — line height
-
-These aren't tied to a page, so they don't participate in the "last active
-page" logic at all — they just get re-applied to `<html data-theme>` /
-CSS variables on load.
-
-### If you want *true* "reopen exactly what I was looking at" behavior
-
-The current rule is a reasonable approximation but can surprise you (see the
-Page A/B example above). If you'd rather persist the actual last-viewed page
-id explicitly, it's a small change to `usePages.js`:
-
-```js
-const LAST_ACTIVE_KEY = 'writecode.lastActiveId';
-
-// on activeId change:
-useEffect(() => {
-  if (activeId) localStorage.setItem(LAST_ACTIVE_KEY, activeId);
-}, [activeId]);
-
-// on load, prefer the stored id if it still points at a real, non-trashed page:
-function pickLastActiveId(pages) {
-  const stored = localStorage.getItem(LAST_ACTIVE_KEY);
-  if (stored && pages.some(p => p.id === stored && !p.trashed)) return stored;
-  return pages.filter(p => !p.trashed).sort((a, b) => b.updated - a.updated)[0]?.id ?? null;
-}
-```
-
-I didn't make this change by default since it's a behavior change from the
-original app, not just a framework port — happy to add it if you want that
-instead.
-
-## New features
-
-### Editing quality
-- **Markdown shortcuts**: type `# `, `## `, `### `, `> `, `- `/`* `, or `1. ` at
-  the start of a line to auto-format as heading/quote/list. Type `**bold**`,
-  `*italic*`/`_italic_`, or `` `code` `` in an otherwise-plain paragraph to
-  convert it inline (implemented in `utils/editorHelpers.js`). Note: on an
-  inline conversion the cursor jumps to the end of that block — a known
-  trade-off of doing this without a full editor engine.
-- **Slash-command menu**: type `/` on an empty line to get a small menu
-  (Heading, Quote, Lists, Table, Image, Divider) — `SlashMenu.jsx`.
-- **Image compression**: inserted images are now downscaled/re-encoded via a
-  canvas (`utils/imageResize.js`) before being embedded as base64, instead of
-  storing the original file byte-for-byte. Keeps the single `localStorage`
-  blob (all pages live in one key) from bloating as fast.
-- I did **not** swap `document.execCommand` for a real editor engine
-  (TipTap/Lexical). That's a genuine rewrite of the editing core, not a
-  feature add — say the word if you want that separately.
-
-### Organization
-- **Tags**: add/remove tags on the current page from the new "Tags" panel in
-  the sidebar (`TagEditor.jsx`). Filter the "All pages" list by tag with the
-  chip row at the top, and see `#tag` next to each page's title.
-- **Indexed full-text search**: `utils/searchIndex.js` builds a token →
-  page-id inverted index (title + content + tags) and ranks results by
-  matching-token count with prefix matching, instead of the old plain
-  substring scan. Rebuilt via `useMemo` whenever `pages` changes.
-- **Templates**: "New page" is now a split button — click for a blank page,
-  click the caret for Meeting notes / Blog draft / To-do list templates
-  (`constants.js` → `TEMPLATES`, `NewPageMenu.jsx`).
-
-### Export / Import
-- **Markdown export** (`.md`) via `turndown` (HTML → Markdown).
-- **Import**: an "Import" button accepts `.md`, `.html`, `.txt`, and `.docx`
-  files and creates a new page from them — Markdown via `marked`, Word via
-  `mammoth`, plain text is paragraph-wrapped (`ImportButton.jsx`).
-- **Real PDF export**: replaced `window.print()` with an actual generated
-  PDF via `jspdf` + `html2canvas` (`utils/pdf.js`), falling back to the print
-  dialog if rendering throws.
-
-### Polish
-- **Command palette** (`Ctrl+/` or the ⌘ icon in the top bar): fuzzy-filter
-  and run any action — new page/template, theme, formatting, export, etc.
-  (`CommandPalette.jsx`).
-- **Mobile-responsive layout**: below ~780px the sidebar becomes a slide-over
-  panel with a tap-to-close backdrop instead of squeezing the canvas; the
-  breadcrumb and save-status chip hide on very narrow screens to avoid
-  overlap. Pure CSS, in the `@media` blocks at the bottom of `styles.css`.
-- Did not add word-count goals/streaks — that felt like it depends on which
-  direction (personal notes vs. writing app) you want to take this, so I
-  left it out rather than guess.
-
-## Notes on the port
-
-- Editing stays **uncontrolled**: the title/content `contentEditable` divs
-  are driven by refs, not React state, and `document.execCommand` is still
-  used for formatting — matching the original rather than rewriting the rich
-  text engine.
-- `localStorage` is same-origin/browser-only, so data doesn't sync across
-  devices or browsers — identical limitation to the original file.
-- All localStorage reads/writes are wrapped in try/catch, same as the
-  original (private browsing / storage-full edge cases fail quietly).
+- **No sync or backup**: data is single-browser, single-device. Clearing
+  site data or switching browsers loses everything. A real backend (or at
+  minimum an export-all/import-all backup file) would fix this.
+- **`document.execCommand` is deprecated.** It still works everywhere today,
+  but a real editor engine (TipTap or Lexical) would fix occasional
+  cursor/list-nesting quirks and remove the deprecation risk long-term. This
+  is a rewrite of the editing core, not a small add-on.
+- **Inline markdown conversion moves the cursor to the end of the block** —
+  a trade-off of doing this without a full editor engine.
+- **No real-time collaboration** — single-user only, by design so far.
+- **No version history** — no way to roll back to an earlier draft of a page
+  beyond browser undo within the current session.
